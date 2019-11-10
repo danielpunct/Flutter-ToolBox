@@ -1,6 +1,10 @@
+import 'dart:typed_data';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'dart:math' as math;
+import 'package:soundpool/soundpool.dart';
 
 class PageRepeater extends StatefulWidget {
   @override
@@ -10,19 +14,40 @@ class PageRepeater extends StatefulWidget {
 class _PageRepeaterState extends State<PageRepeater>
     with TickerProviderStateMixin {
   AnimationController controller;
+  Soundpool pool = Soundpool(streamType: StreamType.notification);
+  bool _played = true;
+
+  Future<int> playSound() async {
+    if (!_played) {
+      _played = true;
+      int soundId = await rootBundle
+          .load("assets/sounds/ding.wav")
+          .then((ByteData soundData) {
+        return pool.load(soundData);
+      });
+      int streamId = await pool.play(soundId);
+      return streamId;
+    } else
+      return 0;
+  }
 
   String get timerString {
     Duration duration = controller.duration * controller.value;
+    if (duration.inSeconds != 0) {
+      _played = false;
+    } else {
+      playSound();
+    }
     return '${duration.inMinutes}:${(duration.inSeconds % 60).toString().padLeft(2, '0')}';
   }
 
   @override
   void initState() {
     super.initState();
-
+    playSound();
     controller = AnimationController(
       vsync: this,
-      duration: Duration(seconds: 20),
+      duration: Duration(minutes: 60),
     );
   }
 
@@ -97,12 +122,14 @@ class _PageRepeaterState extends State<PageRepeater>
                       },
                     ),
                     onPressed: () {
-                      if(controller.isAnimating) {
+                      if (controller.isAnimating) {
                         controller.stop();
-                      }else {
-                        controller.reverse(from: controller.value == 0.0
-                            ? 1.0
-                            : controller.value);
+                        playSound();
+                      } else {
+                        controller.reverse(
+                            from: controller.value == 0.0
+                                ? 1.0
+                                : controller.value);
                       }
                     },
                   )
